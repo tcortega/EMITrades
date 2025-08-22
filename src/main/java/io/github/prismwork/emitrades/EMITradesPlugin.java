@@ -6,6 +6,7 @@ import dev.emi.emi.api.EmiRegistry;
 import dev.emi.emi.api.recipe.EmiRecipeCategory;
 import dev.emi.emi.api.stack.EmiStack;
 import io.github.prismwork.emitrades.config.EMITradesConfig;
+import io.github.prismwork.emitrades.export.TradeExporter;
 import io.github.prismwork.emitrades.recipe.VillagerTrade;
 import io.github.prismwork.emitrades.util.EntityEmiStack;
 import io.github.prismwork.emitrades.util.TradeProfile;
@@ -30,6 +31,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -52,6 +54,7 @@ public class EMITradesPlugin implements EmiPlugin {
         CONFIG = EMITradesConfig.load(CONFIG_FILE);
         registry.addCategory(VILLAGER_TRADES);
         Random random = Random.create();
+        TradeExporter exporter = new TradeExporter();
         for (VillagerProfession profession : Registries.VILLAGER_PROFESSION) {
             VillagerEntity villager = (VillagerEntity)
                     Registries.ENTITY_TYPE.get(new Identifier("minecraft", "villager")).create(MinecraftClient.getInstance().world);
@@ -73,6 +76,13 @@ public class EMITradesPlugin implements EmiPlugin {
                     if (isVanillaFactory(offer)) {
                         registry.addRecipe(new VillagerTrade(new TradeProfile.DefaultImpl(profession, offer, level + 1, villager1), id.get()));
                         id.getAndIncrement();
+                        // Export vanilla factory trade
+                        try {
+                            TradeOffer tradeOffer = offer.create(MinecraftClient.getInstance().player, random);
+                            if (tradeOffer != null) {
+                                exporter.addTrade(profession, level + 1, tradeOffer);
+                            }
+                        } catch (Exception ignored) {}
                     } else {
                         try {
                             int attempts = 5;
@@ -89,6 +99,8 @@ public class EMITradesPlugin implements EmiPlugin {
                             genOffers.forEach(tradeOffer -> {
                                 registry.addRecipe(new VillagerTrade(new TradeProfile.DefaultImpl(profession, new FakeFactory(tradeOffer), finalLevel + 1, villager1), id.get()));
                                 id.getAndIncrement();
+                                // Export modded factory trade
+                                exporter.addTrade(profession, finalLevel + 1, tradeOffer);
                             });
                         } catch (Exception ignored) {}
                     }
@@ -105,6 +117,13 @@ public class EMITradesPlugin implements EmiPlugin {
                 if (isVanillaFactory(offer)) {
                     registry.addRecipe(new VillagerTrade(new TradeProfile.DefaultImpl(WANDERING_TRADER_PLACEHOLDER, offer, lvl, wanderingTrader), wanderingTraderId.get()));
                     wanderingTraderId.getAndIncrement();
+                    // Export wandering trader vanilla factory trade
+                    try {
+                        TradeOffer tradeOffer = offer.create(MinecraftClient.getInstance().player, random);
+                        if (tradeOffer != null) {
+                            exporter.addWanderingTrade(lvl, tradeOffer);
+                        }
+                    } catch (Exception ignored) {}
                 } else {
                     try {
                         int attempts = 5;
@@ -121,11 +140,23 @@ public class EMITradesPlugin implements EmiPlugin {
                         genOffers.forEach(tradeOffer -> {
                             registry.addRecipe(new VillagerTrade(new TradeProfile.DefaultImpl(WANDERING_TRADER_PLACEHOLDER, new FakeFactory(tradeOffer), finalLevel, wanderingTrader), wanderingTraderId.get()));
                             wanderingTraderId.getAndIncrement();
+                            // Export wandering trader modded factory trade
+                            exporter.addWanderingTrade(finalLevel, tradeOffer);
                         });
                     } catch (Exception ignored) {}
                 }
             }
         });
+        
+        // Export all collected trades to JSON file
+        try {
+            File exportFile = FabricLoader.getInstance().getConfigDir().resolve("emitrades_export.json").toFile();
+            exporter.exportToFile(exportFile);
+            System.out.println("[EMITrades] Successfully exported trades to " + exportFile.getAbsolutePath());
+        } catch (Exception e) {
+            System.err.println("[EMITrades] Failed to export trades: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     private static boolean isVanillaFactory(TradeOffers.Factory offer) {
