@@ -74,6 +74,11 @@ public class EntityEmiStack extends EmiStack {
     }
 
     @Override
+    public boolean hasNbt() {
+        return false; // Entities don't have NBT in this context
+    }
+
+    @Override
     public NbtCompound getNbt() {
         throw new UnsupportedOperationException("EntityEmiStack is not intended for NBT handling");
     }
