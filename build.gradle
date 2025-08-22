@@ -27,6 +27,10 @@ repositories {
         name = "Nova Committee - Snapshot"
         url = "https://maven.nova-committee.cn/snapshots/"
     }
+    maven {
+        name = "JitPack"
+        url = "https://jitpack.io"
+    }
     mavenCentral()
 }
 
@@ -46,7 +50,7 @@ dependencies {
 
 	modImplementation "dev.emi:emi-fabric:${project.emi_version}"
 
-    implementation include("io.github.prismwork:prismconfig:0.2.0:all")
+    implementation include("com.github.Prismwork:PrismConfig:0.2.0:all")
     // implementation include("com.moandjiezana.toml:toml4j:0.7.2")
 }
 
