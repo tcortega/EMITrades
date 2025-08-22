@@ -47,7 +47,7 @@ public class TradeExporter {
             this.maxUses = offer.getMaxUses();
             this.villagerXp = offer.getMerchantExperience();
             this.priceMultiplier = offer.getPriceMultiplier();
-            this.demand = offer.getDemand();
+            this.demand = 0; // Default demand for template exports (runtime value not available)
             this.specialPrice = offer.getSpecialPrice();
             this.workstation = "none";
         }
