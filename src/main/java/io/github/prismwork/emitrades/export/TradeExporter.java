@@ -6,6 +6,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
+import net.minecraft.text.Text;
+import dev.emi.emi.EmiPort;
 import net.minecraft.village.TradeOffer;
 import net.minecraft.village.TradeOffers;
 import net.minecraft.village.VillagerProfession;
@@ -26,7 +28,8 @@ public class TradeExporter {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     
     public static class TradeData {
-        public String profession;
+        public String professionId;
+        public String professionName;
         public int level;
         public JsonObject input1;
         public JsonObject input2;
@@ -34,12 +37,11 @@ public class TradeExporter {
         public int maxUses;
         public int villagerXp;
         public float priceMultiplier;
-        public int demand;
-        public int specialPrice;
         public String workstation;
         
         public TradeData(String profession, int level, TradeOffer offer) {
-            this.profession = profession;
+            this.professionId = profession;
+            this.professionName = getProfessionDisplayName(profession);
             this.level = level;
             this.input1 = itemStackToJson(offer.getOriginalFirstBuyItem());
             this.input2 = itemStackToJson(offer.getSecondBuyItem());
@@ -47,13 +49,19 @@ public class TradeExporter {
             this.maxUses = offer.getMaxUses();
             this.villagerXp = offer.getMerchantExperience();
             this.priceMultiplier = offer.getPriceMultiplier();
-            this.demand = 0; // Default demand for template exports (runtime value not available)
-            this.specialPrice = offer.getSpecialPrice();
             this.workstation = "none";
         }
         
         public TradeData(VillagerProfession profession, int level, TradeOffer offer) {
-            this(profession.id(), level, offer);
+            this.professionId = profession.id();
+            this.professionName = getProfessionDisplayName(profession.id());
+            this.level = level;
+            this.input1 = itemStackToJson(offer.getOriginalFirstBuyItem());
+            this.input2 = itemStackToJson(offer.getSecondBuyItem());
+            this.output = itemStackToJson(offer.getSellItem());
+            this.maxUses = offer.getMaxUses();
+            this.villagerXp = offer.getMerchantExperience();
+            this.priceMultiplier = offer.getPriceMultiplier();
             // Get the workstation for this profession
             this.workstation = getWorkstationForProfession(profession);
         }
@@ -78,12 +86,22 @@ public class TradeExporter {
             return "unknown";
         }
         
+        private static String getProfessionDisplayName(String professionId) {
+            // Use the same translation system as EMITrades
+            if (professionId.equals("wandering_trader")) {
+                return EmiPort.translatable("emi.emitrades.placeholder.wandering_trader").getString();
+            }
+            String professionName = professionId.substring(professionId.lastIndexOf(":") + 1);
+            return EmiPort.translatable("entity.minecraft.villager." + professionName).getString();
+        }
+        
         private static JsonObject itemStackToJson(ItemStack stack) {
             if (stack == null || stack.isEmpty()) {
                 return null;
             }
             JsonObject obj = new JsonObject();
             obj.addProperty("id", Registries.ITEM.getId(stack.getItem()).toString());
+            obj.addProperty("name", stack.getName().getString());
             obj.addProperty("count", stack.getCount());
             if (stack.hasNbt() && stack.getNbt() != null) {
                 obj.addProperty("nbt", stack.getNbt().toString());
@@ -93,7 +111,8 @@ public class TradeExporter {
         
         public JsonObject toJson() {
             JsonObject obj = new JsonObject();
-            obj.addProperty("profession", profession);
+            obj.addProperty("professionId", professionId);
+            obj.addProperty("professionName", professionName);
             obj.addProperty("level", level);
             if (input1 != null) obj.add("input1", input1);
             if (input2 != null) obj.add("input2", input2);
@@ -101,8 +120,6 @@ public class TradeExporter {
             obj.addProperty("maxUses", maxUses);
             obj.addProperty("villagerXp", villagerXp);
             obj.addProperty("priceMultiplier", priceMultiplier);
-            obj.addProperty("demand", demand);
-            obj.addProperty("specialPrice", specialPrice);
             obj.addProperty("workstation", workstation);
             return obj;
         }
